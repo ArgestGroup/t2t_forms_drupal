@@ -1,0 +1,169 @@
+<?php
+include_once $_SERVER['DOCUMENT_ROOT'].'/sites/all/modules/t2t_forms/t2t/init_t2t.php';
+
+function t2t_forms_help($path, $arg) {
+  switch ($path) {
+    case "admin/help#t2t_forms":
+      return '<p>' . t("Модуль для покупки билетов он-лайн. Отображает 3 типа блоков: формы, результаты и архив.") . '</p>';
+      break;
+  }
+}
+
+function t2t_forms_block_info() {
+  $blocks['forms'] = array(
+    'info' => t('Блок форм поиска он-лайн билетов'), 
+    'cache' => DRUPAL_CACHE_PER_ROLE,
+  );
+  $blocks['results'] = array(
+    'info' => t('Блок результатов поиска он-лайн билетов'),
+    'cache' => DRUPAL_CACHE_PER_ROLE, 
+  );
+  $blocks['archive'] = array(
+    'info' => t('Блок архива покупок он-лайн билетов'),
+    'cache' => DRUPAL_CACHE_PER_ROLE, 
+  );
+  
+  return $blocks;
+}
+
+function t2t_forms_block_view($delta = '') {
+  global $stylesAndScripts;
+  $layout = "";
+  if(!isset($stylesAndScripts)){
+    $layout = T2TForms::app()->getCss().T2TForms::app()->getJs();
+    $stylesAndScripts = true;
+  }
+  
+  $transports = variable_get('t2t_forms_transports');
+  global $user;
+  global $stylesAndScripts;
+  
+  switch($delta){
+    case 'forms':
+      $block['content'] = $layout 
+	. (($transports['Trains'])?T2TForms::app()->getForm(T2TForms::TRAIN):"")
+	. (($transports['Buses'])?T2TForms::app()->getForm(T2TForms::BUS):"");
+	
+      break;
+    case 'results':
+      $block['content'] = $layout
+	. ((variable_get('t2t_forms_pay_systems'))?T2TForms::app()->getPaySystems():"")
+	. T2TForms::app()->getTable(variable_get('t2t_forms_results_with_search'));
+      break;
+    case 'archive':
+      $block['content'] = (($user->uid)?T2TForms::app()->getArchive():"");
+      break;
+  }
+  
+  return $block;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function t2t_forms_menu() {
+  $items = array();
+
+  $items['admin/config/content/t2t_forms'] = array(
+    'title' => 'T2TForms',
+    'description' => 'Настройки для модуля Т2ТФормы',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('t2t_forms_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Page callback: T2TForms settings
+ *
+ * @see t2t_forms_menu()
+ */
+function t2t_forms_form($form, &$form_state) {
+  $form['t2t_forms_basic'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Основные настройки модуля'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => FALSE,
+  );
+  $form['t2t_forms_basic']['t2t_forms_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Секретный ключ'),
+    '#default_value' => variable_get('t2t_forms_secret'),
+    '#description' => t('Секретный ключ, который вы получили при заключении договора'),
+  );
+  $form['t2t_forms_basic']['t2t_forms_domain'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Домейн'),
+    '#default_value' => variable_get('t2t_forms_domain'),
+    '#description' => t('Авторизационное имя, которое вы получили при заключении договора'),
+  );
+  $form['t2t_forms_basic']['t2t_forms_result_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('URL результатов'),
+    '#default_value' => variable_get('t2t_forms_result_page'),
+    '#description' => t('УРЛ, на котором установлен экземпляр модуля с результатами поиска'),
+  );
+  $form['t2t_forms_basic']['t2t_forms_transports'] = array(
+    '#type' => 'checkboxes',
+    '#options' => drupal_map_assoc(array(t('Trains'), t('Buses'))),
+    '#title' => t('Виды транспортов'),
+    '#default_value' => variable_get('t2t_forms_transports',array(1)),
+    '#description' => t('Отметьте те виды транспортов, которые вы хотите видеть в блоке форм.')
+  );
+  if(variable_get('t2t_forms_languages') == "")variable_set('t2t_forms_languages',T2TForms::LANG_UA);
+  $form['t2t_forms_basic']['t2t_forms_languages'] = array(
+    '#type' => 'select',
+    '#title' => t('Языки'),
+    '#options' => array(
+      "ua" => t('Українська'),
+      "ru" => t('Русский'),
+      "en" => t('English')
+    ),
+    '#default_value' => variable_get('t2t_forms_languages'),
+    '#description' => t('Выбирете язык'),
+  );
+
+  $form['t2t_forms_secondary'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Второстепенные настройки модуля'), 
+    '#collapsible' => TRUE, 
+    '#collapsed' => FALSE,
+  );
+  $form['t2t_forms_secondary']['t2t_forms_load_jquery'] = array(
+    '#type' =>'checkbox',
+    '#default_value' => variable_get('t2t_forms_load_jquery'),
+    '#title' => t('Подгружать Jquery'),
+    '#description' => t('Отметьте если хотите, чтоб библиотека jquery подгружалась вместе с модулем')
+  );
+    $form['t2t_forms_secondary']['t2t_forms_results_with_search'] = array(
+    '#type' =>'checkbox',
+    '#default_value' => variable_get('t2t_forms_results_with_search'),
+    '#title' => t('Результаты с поиском'),
+    '#description' => t('Отображать форму поиска рядом с результатами')
+  );
+    $form['t2t_forms_secondary']['t2t_forms_pay_systems'] = array(
+    '#type' =>'checkbox',
+    '#default_value' => variable_get('t2t_forms_pay_systems'),
+    '#title' => t('Платежные системы'),
+    '#description' => t('Отметьте если хотите, чтоб в образец модуля подгружались разные типы платежных систем')
+  );
+  //css & js urls
+  if(variable_get('t2t_forms_css') == "")variable_set('t2t_forms_css',T2TForms::T2T_FORMS_STYLE);
+  $form['t2t_forms_secondary']['t2t_forms_css'] = array(
+    '#type' => 'textfield',
+    '#title' => t('CSS Url'),
+    '#default_value' => variable_get('t2t_forms_css'),
+    '#description' => t('Измените путь к css-файлу, если хотите использовать свои стили для модуля'),  
+  );
+  if(variable_get('t2t_forms_jquery_ui') == "")variable_set('t2t_forms_jquery_ui',T2TForms::T2T_JQUERY_UI_STYLE);
+  $form['t2t_forms_secondary']['t2t_forms_jquery_ui'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Jquery UI css URL'),
+    '#default_value' => variable_get('t2t_forms_jquery_ui'),
+    '#description' => t('Измените путь к Jquery UI css-файлу, если хотите подгрузить свои стили для jquery виджетов'),
+  );
+  return system_settings_form($form);
+}

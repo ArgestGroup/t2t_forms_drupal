@@ -1,0 +1,6 @@
+name = T2TForms
+description = Модуль для покупки билетов он-лайн
+core = 7.x
+
+; NEW LINE
+configure = admin/config/content/t2t_forms
