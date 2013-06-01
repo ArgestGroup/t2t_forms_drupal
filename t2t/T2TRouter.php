@@ -1,13 +1,9 @@
 <?php
-	define('DRUPAL_ROOT', $_SERVER['DOCUMENT_ROOT']);
-	$base_url = 'http://'.$_SERVER['HTTP_HOST'];
-	include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
-	// Bootstrap merely for session purposes:
-	drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
-	
-	// Инициализация компонента
-	include_once $_SERVER['DOCUMENT_ROOT'].'/sites/all/modules/t2t_forms/t2t/T2TForms.php';
 
+	// Инициализация компонента
+	include('T2TForms.php');
+	// Инициализируем статику
+	T2TForms::app();  
 	// Обработка логаут из режима авторизации форм
 	T2TForms::logout();
 	// Обработка ajax запросов
